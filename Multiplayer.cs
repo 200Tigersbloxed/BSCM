@@ -10,47 +10,28 @@ namespace BSCM
     {
         private NetClient client_connection = null;
         private NetServer server_connection = null;
-        private bool isServer = PluginConfig.Instance.isServer;
         private Vector3 latestPosition;
         private Quaternion latestRotation;
         private ScoreController ScoreController;
         private SongController SongController;
         private bool clientReady = false;
         private long latency = 0;
+        private int clientIdentifier = 0;
 
         public Multiplayer()
         {
-            if (isServer)
+            try
             {
-                try
-                {
-                    NetPeerConfiguration config = new NetPeerConfiguration("BSCM");
-                    config.Port = PluginConfig.Instance.port;
-
-                    server_connection = new NetServer(config);
-                    server_connection.Start();
-                }
-                catch
-                {
-                    Plugin.Log.Error("Error while starting Server");
-                }
-                Plugin.Log.Info("Server Ready");
+                var config = new NetPeerConfiguration("BSCM");
+                client_connection = new NetClient(config);
+                client_connection.Start();
+                client_connection.Connect(host: PluginConfig.Instance.url, port: PluginConfig.Instance.port);
+                Thread.Sleep(1000);
+                Plugin.Log.Info("Client Ready");
             }
-            else
+            catch
             {
-                try
-                {
-                    var config = new NetPeerConfiguration("BSCM");
-                    client_connection = new NetClient(config);
-                    client_connection.Start();
-                    client_connection.Connect(host: PluginConfig.Instance.url, port: PluginConfig.Instance.port);
-                    Thread.Sleep(1000);
-                    Plugin.Log.Info("Client Ready");
-                }
-                catch
-                {
-                    Plugin.Log.Error("Error while connecting to Server");
-                }
+                Plugin.Log.Error("Error while connecting to Server");
             }
             Plugin.Log.Info("Multiplayer Ready !");
         }
@@ -71,30 +52,10 @@ namespace BSCM
             setGameStatus(false);
             Plugin.Log.Info("Pausing Game");
 
-            if(isServer)
-            {
-                Plugin.Log.Info("Waiting for client");
-                // wait for client to switch to ready state
-                while (!clientReady) {
-                    checkMessages();
-                }
-                // start game on client
-                Plugin.Log.Info("Starting client game");
-                clientReady = false;
-                sendData("start");
-                // wait for estimated latency
-                Plugin.Log.Info("Latency: "+latency);
-                // start game on server
-                Plugin.Log.Info("Starting server game");
-                setGameStatus(true);
-                Plugin.Log.Info("Server game started");
-            }
-            else
-            {
-                // send ready state to server
-                sendData("ready");
-                Plugin.Log.Info("Client ready [c]");
-            }
+            sendData("start");
+            // send ready state to server
+            sendData("ready");
+            Plugin.Log.Info("Client ready [c]");
         }
 
         public Vector3 getLatestPosition()
@@ -107,16 +68,13 @@ namespace BSCM
         }
         public void sendCoords(Vector3 pos, Quaternion rot)
         {
-            string data = pos.x + ";" + pos.y + ";" + pos.z + ";" + rot.x + ";" + rot.y + ";" + rot.z + ";" + rot.w;
+            string data = clientIdentifier.ToString() + ";" + pos.x + ";" + pos.y + ";" + pos.z + ";" + rot.x + ";" + rot.y + ";" + rot.z + ";" + rot.w;
             sendData(data);
         }
 
         public void stop()
         {
-            if (isServer)
-                server_connection.Shutdown("Plugin Exit");
-            else
-                client_connection.Disconnect("Plugin Exit");
+            client_connection.Disconnect("Plugin Exit");
         }
 
         private long getTimestamp()
@@ -140,31 +98,22 @@ namespace BSCM
 
         private void parseMessage(string message)
         {
-            if(isServer && message == "ready")
-            {
-                // when client is ready
-                latency = getTimestamp();
-                sendData("ping");
-                Plugin.Log.Info("Sending ping");
-            }
-            else if(!isServer && message == "ping")
+            string[] identifierData = message.Split(',');
+            if (message == "ping")
             {
                 // reply to server ping
                 sendData("pong");
                 Plugin.Log.Info("Sending pong");
             }
-            else if (isServer && message == "pong")
-            {
-                // when client replies to pong
-                latency = getTimestamp() - latency;
-                clientReady = true;
-                Plugin.Log.Info("Client ready");
-            }
-            else if(!isServer && message == "start")
+            else if(message == "start")
             {
                 // start the client game
                 setGameStatus(true);
                 Plugin.Log.Info("Client game started");
+            }
+            else if(identifierData[0] == "identifier")
+            {
+                clientIdentifier = Int16.Parse(identifierData[1]);
             }
             else
             {
@@ -178,46 +127,20 @@ namespace BSCM
         public void checkMessages()
         {
             NetIncomingMessage message;
-            if(isServer)
+            while ((message = client_connection.ReadMessage()) != null)
             {
-                while ((message = server_connection.ReadMessage()) != null)
-                {
-                    if (message.MessageType == NetIncomingMessageType.Data)
-                        parseMessage(message.ReadString());
-                    else
-                        Plugin.Log.Debug(message.MessageType.ToString() + ":" + message.ReadString());
-                }
-            }
-            else
-            {
-                while ((message = client_connection.ReadMessage()) != null)
-                {
-                    if (message.MessageType == NetIncomingMessageType.Data)
-                        parseMessage(message.ReadString());
-                    else
-                        Plugin.Log.Debug(message.MessageType.ToString() + ":" + message.ReadString());
-                }
+                if (message.MessageType == NetIncomingMessageType.Data)
+                    parseMessage(message.ReadString());
+                else
+                    Plugin.Log.Debug(message.MessageType.ToString() + ":" + message.ReadString());
             }
         }
 
         private void sendData(string data)
         {
-            if (isServer)
-            {
-                NetOutgoingMessage msg = server_connection.CreateMessage();
-                msg.Write(data);
-                if (server_connection.Connections.Count > 0)
-                    server_connection.SendMessage(msg, server_connection.Connections[0], NetDeliveryMethod.ReliableOrdered);
-                else
-                    Plugin.Log.Critical("Client not connected");
-            }
-            else
-            {
-                NetOutgoingMessage msg = client_connection.CreateMessage();
-                msg.Write(data);
-                client_connection.SendMessage(msg, NetDeliveryMethod.ReliableOrdered);
-            }
+            NetOutgoingMessage msg = client_connection.CreateMessage();
+            msg.Write(data);
+            client_connection.SendMessage(msg, NetDeliveryMethod.ReliableOrdered);
         }
-
     }
 }
