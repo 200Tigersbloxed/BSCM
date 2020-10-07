@@ -4,6 +4,10 @@ A co-op mod for Beat Saber
 
 Based on [BeatSaber-Claws](https://github.com/SteffanDonal/BeatSaber-Claws). Depends on [lidgren-network](https://github.com/lidgren/lidgren-network-gen3) for communication
 
+## IMPORTANT
+
+This fork is UNSTABLE and still a WIP. This fork may not work at all.
+
 ## Installation
 
  - Requirements: BSIPA, BS_Utils, BSML
