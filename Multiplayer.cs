@@ -28,6 +28,7 @@ namespace BSCM
                 client_connection.Connect(host: PluginConfig.Instance.url, port: PluginConfig.Instance.port);
                 Thread.Sleep(1000);
                 Plugin.Log.Info("Client Ready");
+                sendData("join");
             }
             catch
             {
@@ -114,6 +115,10 @@ namespace BSCM
             else if(identifierData[0] == "identifier")
             {
                 clientIdentifier = Int16.Parse(identifierData[1]);
+            }
+            else if(identifierData[0] == "wholeft")
+            {
+                sendData("imhere");
             }
             else
             {
