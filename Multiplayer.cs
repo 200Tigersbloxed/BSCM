@@ -34,7 +34,7 @@ namespace BSCM
             {
                 Plugin.Log.Error("Error while connecting to Server");
             }
-            Plugin.Log.Info("Multiplayer Ready !");
+            Plugin.Log.Info("Multiplayer Ready!");
         }
 
         public void startSong()

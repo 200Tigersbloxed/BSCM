@@ -26,7 +26,7 @@ namespace BSCMServer
         private NetServer server_connection = null;
         //private long latency = 0;
         // int is client number, bool is value
-        public Dictionary<int, bool> clients = new Dictionary<int, bool>();
+        //public Dictionary<int, bool> clients = new Dictionary<int, bool>();
         private int c1 = 0;
         private int c2 = 0;
 
@@ -69,6 +69,7 @@ namespace BSCMServer
             }
         }
 
+        /*
         int ReturnPlayerType(string type)
         {
             // check for host or player
@@ -91,6 +92,7 @@ namespace BSCMServer
             }
             return 0;
         }
+        */
 
         void parseMessage(string message)
         {
@@ -110,22 +112,23 @@ namespace BSCMServer
             }
             else if (message == "start")
             {
-                if (clients.Count > 1)
+                if (server_connection.ConnectionsCount > 1)
                 {
                     sendData("start", 0);
                     sendData("start", 1);
                 }
                 else
                 {
-                    Console.WriteLine("Not Enough Players! Amount of Players: " + clients.Count);
+                    Console.WriteLine("Not Enough Players! Amount of Players: " + server_connection.ConnectionsCount);
                 }
             }
             else if(message == "join")
             {
-                clients = null;
+                //clients = null;
                 try
                 {
                     sendData("wholeft", 0);
+                    sendData("wholeft", 1);
                 }
                 catch (Exception e)
                 {
@@ -136,11 +139,11 @@ namespace BSCMServer
             {
                 Console.WriteLine("spit");
                 // whoever is left, set them as host
-                if(clients.Count <= 1)
+                if(server_connection.ConnectionsCount <= 1)
                 {
                     // there's no one so theyre the host
                     Console.WriteLine("a1");
-                    clients.Add(0, true);
+                    //clients.Add(0, true);
                     Console.WriteLine("a2");
                     sendData("identifier,0", 0);
                 }
@@ -148,15 +151,14 @@ namespace BSCMServer
                 {
                     // theres one person so theyre the player
                     Console.WriteLine("b1");
-                    clients.Add(1, true);
+                    //clients.Add(1, true);
                     Console.WriteLine("b2");
                     sendData("identifier,1", 1);
                 }
-                Console.WriteLine(clients.ToString());
             }
             else
             {
-                if (clients.Count > 1)
+                if (server_connection.ConnectionsCount > 1)
                 {
                     try
                     {
@@ -193,7 +195,7 @@ namespace BSCMServer
                 }
                 else
                 {
-                    Console.WriteLine("Not Enough Players! Amount of Players: " + clients.Count);
+                    Console.WriteLine("Not Enough Players! Amount of Players: " + server_connection.ConnectionsCount);
                 }
             }
         }
@@ -210,12 +212,13 @@ namespace BSCMServer
                 if(c1 != c2 && c2 >= c1)
                 {
                     Console.WriteLine("A Player Left " + c1 + c2);
-                    // someone left, lets find out who
+                    // someone left
                     ///*
-                    clients = null;
+                    //clients = null;
                     try
                     {
                         sendData("wholeft", 0);
+                        sendData("wholeft", 1);
                     }
                     catch(Exception e)
                     {
